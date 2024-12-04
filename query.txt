@@ -1,0 +1,20 @@
+
+# Get all movies
+query GetAllMovies {
+  getMovies {
+    id
+    name
+    producer
+    rating
+  }
+}
+
+# Get a specific movie by ID
+query getmovie {
+  getMovie(id: "674d980175792e28e1e2893e") {
+    id
+    name
+    producer
+    rating
+  }
+}

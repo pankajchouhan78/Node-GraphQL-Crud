@@ -1,0 +1,28 @@
+# Create a movie
+mutation CreateMovie {
+  addMovie(name: "avengers", producer: "Nolan", rating: 8.0) {
+    id
+    name
+    producer
+    rating
+  }
+}
+
+
+# Update a movie
+mutation UpdateMovie {
+  updateMovie(id: "674d967f75792e28e1e28939", name: "testingg", producer: "New Producer") {
+    id
+    name
+    producer
+    rating
+  }
+}
+
+
+# Delete a movie
+mutation deleteMovie($id: ID!) {
+  deleteMovie(id: $id) {
+    message
+  }
+}
