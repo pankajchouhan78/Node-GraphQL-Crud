@@ -1,20 +1,16 @@
 
-# Get all movies
-query GetAllMovies {
-  getMovies {
-    id
-    name
-    producer
-    rating
+# Send Email
+query sendEmail{
+  sendemail{
+    message
   }
 }
 
-# Get a specific movie by ID
-query getmovie {
-  getMovie(id: "674d980175792e28e1e2893e") {
+# Get Login-user
+query currenrt_user {
+  me {
     id
-    name
-    producer
-    rating
+    username
+    email
   }
 }

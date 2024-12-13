@@ -1,21 +1,26 @@
 # Create a movie
-mutation CreateMovie {
-  addMovie(name: "avengers", producer: "Nolan", rating: 8.0) {
-    id
-    name
-    producer
-    rating
+mutation {
+  register(username: "pankaj", email: "pankaj@example.com", password: "password123") {
+    token
+    user {
+      id
+      username
+      email
+    }
   }
 }
 
 
-# Update a movie
-mutation UpdateMovie {
-  updateMovie(id: "674d967f75792e28e1e28939", name: "testingg", producer: "New Producer") {
-    id
-    name
-    producer
-    rating
+
+# Login user
+mutation Loginuser {
+  login(email: "pankaj@example.com", password: "password123") {
+    token
+    user {
+      id
+      username
+      email
+    }
   }
 }
 

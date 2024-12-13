@@ -1,104 +1,108 @@
 const { gql } = require('apollo-server-express');
-const Movie = require('./models/movie.js').Movies;
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const { Users } = require('./models/user');
 
-// GraphQL Type Definitions
+const JWT_SECRET = "your_secret_key";
+const nodemailer = require('nodemailer');
+
+var mailOptions = {
+  from: 'pankajchouhan.work@gmail.com',
+  to: 'pankaj787975@gmail.com',
+  subject: 'Sending Email using Node.js',
+  html: `<body>  
+    <h2>That Was Easy!</h2>  
+    <p>Hi <strong>Pankaj</strong>,</p>  
+    <p>I just wanted to share how easy it was to <em>[describe the task, activity, or experience]</em>! It was surprisingly straightforward, and I really enjoyed it.</p>  
+    <p>Have you ever tried <em>[describe the task, activity, or experience]</em>? I think you would find it just as easy and fun!</p>  
+    <p>Best,<br>  
+    <strong>testuser</strong></p>  
+ 
+</body>  `
+};
+
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: 'pankajchouhan.work@gmail.com',
+    pass: 'kutg cyzf rymk vgso'
+  }
+});
+
+// GraphQL Schema
 const typeDefs = gql`
-    type Movie {
-        id: ID!
-        name: String!
-        producer: String!
-        rating: Float!
-    }
+  type User {
+    id: ID!
+    username: String!
+    email: String!
+    password: String
+  }
 
-    type Query {
-        getMovies: [Movie]
-        getMovie(id: ID!): Movie 
-    }
+  type AuthPayload {
+    token: String!
+    user: User!
+  }
 
-    type Mutation {
-        addMovie(name: String!, producer: String!, rating: Float!): Movie
-        updateMovie(id: ID!, name: String, producer: String, rating: Float): Movie
-        deleteMovie(id: ID!): DeleteMovieResponse
-    }
+  type SendEmail{
+    message:String
+  }
 
-    type DeleteMovieResponse {
-        message: String!
-    }
+  type Query {
+    me: User
+    sendemail:SendEmail
+  }
+
+  type Mutation {
+    register(username: String!, email: String!, password: String!): AuthPayload!
+    login(email: String!, password: String!): AuthPayload!
+  }
 `;
 
 // Resolvers
 const resolvers = {
-    Query: {
-        // Fetch all movies from the database
-        getMovies: () => {
-            return Movie.find({}).exec();
-        },
-
-        // Fetch a single movie by its ID
-        getMovie: (parent, args) => {
-            return Movie.findById(args.id).exec();  // Use exec() to execute the query explicitly
-        }
+  Query: {
+    me: async (_, __, { userId }) => {
+      if (!userId) throw new Error("Not authenticated");
+      return await Users.findById(userId);
     },
 
-    Mutation: {
-        // Add a new movie to the database
-        addMovie: (parent, args) => {
-            const movie = new Movie({
-                name: args.name,
-                producer: args.producer,
-                rating: args.rating
-            });
-            return movie.save();  // Save the new movie to the database
-        },
-
-        // Update an existing movie's details
-        updateMovie: (parent, args) => {
-            if (!args.id) {
-                throw new Error('Movie ID is required');
+    sendemail: async () => {
+      try {
+        const info = await new Promise((resolve, reject) => {
+          transporter.sendMail(mailOptions, (error, info) => {
+            if (error) {
+              reject(error);
+            } else {
+              resolve(info);
             }
-
-            const updateData = {};
-
-            // Add provided fields to the updateData object
-            if (args.name) updateData.name = args.name;
-            if (args.producer) updateData.producer = args.producer;
-            if (args.rating !== undefined) updateData.rating = args.rating;
-
-            // Find the movie by ID and update it with new values
-            return Movie.findOneAndUpdate(
-                { _id: args.id },
-                { $set: updateData },
-                { new: true }  // Return the updated document
-            ).exec()
-            .then(updatedMovie => {
-                if (!updatedMovie) {
-                    throw new Error('Movie not found');
-                }
-                return updatedMovie;  // Return the updated movie
-            })
-            .catch(err => {
-                console.error('Error updating movie:', err);
-                throw new Error('Could not update movie');
-            });
-        },
-
-        // Delete a movie by its ID
-        deleteMovie: (parent, args) => {
-            return Movie.deleteOne({ _id: args.id })
-              .exec()
-              .then(result => {
-                if (result.deletedCount === 0) {
-                  throw new Error('Movie not found');
-                }
-                return {
-                  message: 'Movie deleted successfully',
-                };
-              })
-              .catch(error => {
-                throw new Error('Error deleting movie: ' + error.message);
-              });
-          }
+          });
+        });
+        return { message: "Email sent"};
+      } catch (error) {
+        console.error("Error sending email:", error);
+        return { message: error.message };
+      }
     }
+  },
+  Mutation: {
+    register: async (_, { username, email, password }) => {
+      const existingUser = await Users.findOne({ email });
+      if (existingUser) throw new Error("User already exists");
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const user = new Users({ username, email, password: hashedPassword });
+      await user.save();
+      const token = jwt.sign({ userId: user.id }, JWT_SECRET);
+      return { token, user };
+    },
+    login: async (_, { email, password }) => {
+      const user = await Users.findOne({ email });
+      if (!user) throw new Error("Invalid email or password");
+      const isValid = await bcrypt.compare(password, user.password);
+      if (!isValid) throw new Error("Invalid email or password");
+      const token = jwt.sign({ userId: user.id }, JWT_SECRET);
+      return { token, user };
+    },
+  },
 };
 
 module.exports = { typeDefs, resolvers };
